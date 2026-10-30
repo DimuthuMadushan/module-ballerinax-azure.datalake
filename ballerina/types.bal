@@ -34,6 +34,13 @@ public type LeasePathQueries record {
     int:Signed32 timeout?;
 };
 
+# OAuth2 Client Credentials Grant Configs
+public type OAuth2ClientCredentialsGrantConfig record {|
+    *http:OAuth2ClientCredentialsGrantConfig;
+    # Token URL
+    string tokenUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+|};
+
 # Represents the Headers record for the operation: getFilesystemProperties
 public type GetFilesystemPropertiesHeaders record {
     # Specifies the version of the REST protocol used for processing the request. Required for every authorized request, including those that use a Microsoft Entra ID bearer token. Defaults to 2019-10-31
@@ -331,6 +338,13 @@ public type DeleteFilesystemQueries record {
     int:Signed32 timeout?;
 };
 
+# OAuth2 Refresh Token Grant Configs
+public type OAuth2RefreshTokenGrantConfig record {|
+    *http:OAuth2RefreshTokenGrantConfig;
+    # Refresh URL
+    string refreshUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+|};
+
 # A filesystem in the storage account
 public type Filesystem record {
     # The name of the filesystem
@@ -345,7 +359,7 @@ public type Filesystem record {
 @display {label: "Connection Config"}
 public type ConnectionConfig record {|
     # Configurations related to client authentication
-    http:BearerTokenConfig auth;
+    OAuth2ClientCredentialsGrantConfig|http:BearerTokenConfig|OAuth2RefreshTokenGrantConfig auth;
     # The HTTP version understood by the client
     http:HttpVersion httpVersion = http:HTTP_2_0;
     # Configurations related to HTTP/1.x protocol

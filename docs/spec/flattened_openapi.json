@@ -10,7 +10,9 @@
     }
   },
   "security" : [ {
-    "azure_auth" : [ "user_impersonation" ]
+    "azure_auth" : [ "https://storage.azure.com/user_impersonation" ]
+  }, {
+    "azure_auth_app" : [ "https://storage.azure.com/.default" ]
   } ],
   "tags" : [ {
     "name" : "Account Operations"
@@ -2236,12 +2238,26 @@
     "securitySchemes" : {
       "azure_auth" : {
         "type" : "oauth2",
-        "description" : "Azure Active Directory OAuth2 Flow",
+        "description" : "Microsoft Entra ID OAuth 2.0, delegated access on behalf of a signed-in user through the authorization-code flow. Request the https://storage.azure.com/user_impersonation scope, with offline_access to receive a refresh token. Replace 'common' in the URLs with a tenant ID or domain to restrict sign-in to a single tenant.",
         "flows" : {
-          "implicit" : {
-            "authorizationUrl" : "https://login.microsoftonline.com/common/oauth2/authorize",
+          "authorizationCode" : {
+            "authorizationUrl" : "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+            "tokenUrl" : "https://login.microsoftonline.com/common/oauth2/v2.0/token",
             "scopes" : {
-              "user_impersonation" : "impersonate your user account"
+              "https://storage.azure.com/user_impersonation" : "Access Azure Storage as the signed-in user",
+              "offline_access" : "Receive a refresh token"
+            }
+          }
+        }
+      },
+      "azure_auth_app" : {
+        "type" : "oauth2",
+        "description" : "Microsoft Entra ID OAuth 2.0, app-only access through the client-credentials flow with the https://storage.azure.com/.default scope. Replace 'common' in the token URL with a tenant ID or domain, since the client-credentials flow requires one.",
+        "flows" : {
+          "clientCredentials" : {
+            "tokenUrl" : "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+            "scopes" : {
+              "https://storage.azure.com/.default" : "Access Azure Storage with the roles granted to the application"
             }
           }
         }

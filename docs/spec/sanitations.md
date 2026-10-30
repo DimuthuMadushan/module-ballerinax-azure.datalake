@@ -1,6 +1,6 @@
-_Author_: @DimuthuMadushan \
+_Author_:  @DimuthuMadushan \
 _Created_: 2026/09/24 \
-_Updated_: 2026/09/24 \
+_Updated_: 2026/10/30 \
 _Edition_: Swan Lake
 
 # Sanitation for OpenAPI specification
@@ -9,15 +9,17 @@ This document records the sanitation done on top of the official OpenAPI specifi
 The OpenAPI specification is obtained from the [Azure Data Lake Storage 2019-10-31 specification](https://github.com/wso2/api-specs/blob/main/openapi/azure/datalake/2019-10-31/openapi.yml) (`openapi/azure/datalake/2019-10-31/` in `api-specs`), which is the upstream `DataLakeStorageClient` Swagger 2.0 document.
 These changes are done in order to improve the overall usability, and as workarounds for some known language limitations.
 
-1. **Added the `azure_auth` security scheme** (applied to `docs/spec/openapi.json`, before flatten and align)
+1. **Added the Microsoft Entra ID OAuth 2.0 security schemes** (applied to `docs/spec/openapi.json`, before flatten and align)
 
    **Location**: top level — `securityDefinitions` and `security`
 
    **Original**: The specification declared no security scheme. The upstream document relies on AutoRest's host-side authentication, so the generated `ConnectionConfig` had no `auth` field.
 
-   **Updated**: Added an `azure_auth` OAuth 2.0 scheme (implicit flow, authorization URL `https://login.microsoftonline.com/common/oauth2/authorize`, scope `user_impersonation`) and a top-level `security: [{"azure_auth": ["user_impersonation"]}]`. This is the same scheme the previously published connector (`ballerinax/azure.datalake` 1.5.1) declared.
+   **Updated**: Added two OAuth 2.0 schemes against the Microsoft identity platform v2.0 endpoints, with `https://login.microsoftonline.com/common/oauth2/v2.0/token` as the token URL:
+   - `azure_auth` — `accessCode` (authorization code) flow, authorization URL `https://login.microsoftonline.com/common/oauth2/v2.0/authorize`, scopes `https://storage.azure.com/user_impersonation` and `offline_access`, for delegated access with a refresh token.
+   - `azure_auth_app` — `application` (client credentials) flow, scope `https://storage.azure.com/.default`, for app-only access.
 
-   **Reason**: Data Lake Storage calls are authorized with a Microsoft Entra ID bearer token. With the scheme in place, the generated `ConnectionConfig` carries `http:BearerTokenConfig auth`.
+   **Reason**: Data Lake Storage calls are authorized with a Microsoft Entra ID token issued for Azure Storage. An implicit flow has no token URL, so the generated `ConnectionConfig` could only take a bearer token that the caller has to renew. With these flows it carries `OAuth2ClientCredentialsGrantConfig|http:BearerTokenConfig|OAuth2RefreshTokenGrantConfig auth`, the same options as the Microsoft Teams connector, and the connector renews tokens itself. The generated `tokenUrl` and `refreshUrl` default to the `common` endpoint. The client credentials flow needs a tenant-specific endpoint, so callers override the default, as the README describes.
 
 2. **Gave `x-ms-version` a default of `2019-10-31`** (applied to `docs/spec/openapi.json`, before flatten and align)
 

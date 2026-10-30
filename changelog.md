@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 The connector moves to its own repository, `module-ballerinax-azure.datalake`, and is regenerated. It keeps all 12 operations of version 1.5.1.
 
+### Added
+
+- The connector can authenticate with an OAuth 2.0 refresh token or client credentials through Microsoft Entra ID, as well as a bearer token, and renews access tokens itself. `ConnectionConfig.auth` accepts `OAuth2RefreshTokenGrantConfig` and `OAuth2ClientCredentialsGrantConfig`.
+
 ### Changed
 
 - **Breaking:** remote methods are renamed:

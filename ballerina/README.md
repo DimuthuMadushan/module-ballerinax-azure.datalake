@@ -14,23 +14,59 @@ The Azure Data Lake connector lets Ballerina programs work with Data Lake Storag
 
 ## Setup guide
 
-To use the Azure Data Lake connector, you need a storage account with a hierarchical namespace, permission to use its data, and a Microsoft Entra ID access token issued for Azure Storage.
+To use the Azure Data Lake connector, you need a storage account with a hierarchical namespace, permission to use its data, and an application registered in Microsoft Entra ID.
 
-1. Sign in to the [Azure portal](https://portal.azure.com/) with an account that has an active subscription.
+### Step 1: Sign in to the Azure portal
 
-2. Create a storage account: search for **Storage accounts**, select **Create**, and choose a subscription, resource group, region and a globally unique account name. On the **Advanced** tab, select **Enable hierarchical namespace**, then create the account. The connector sends every request to the account's Data Lake endpoint, `https://<storage-account-name>.dfs.core.windows.net`.
+1. Go to the [Azure portal](https://portal.azure.com/).
+2. Sign in with an account that has an active subscription.
 
-3. Grant the identity that will call the account access to its data. Open the storage account's **Access control (IAM)** page and assign **Storage Blob Data Contributor** to read and write data, or **Storage Blob Data Owner** to also change owners, permissions and access control lists.
+### Step 2: Create a storage account with hierarchical namespace
 
-4. Obtain an access token for the `https://storage.azure.com/` resource. For local development, sign in with the [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) and run:
+1. Search for **Storage accounts** and select **Create**.
+2. Choose a subscription, resource group, region and a globally unique account name.
+3. On the **Advanced** tab, select **Enable hierarchical namespace**.
+4. Create the account.
+5. Note the account's Data Lake endpoint, `https://<storage-account-name>.dfs.core.windows.net`. The connector sends every request to this URL.
 
-    ```bash
-    az account get-access-token --resource https://storage.azure.com/ --query accessToken --output tsv
+### Step 3: Grant data-plane access
+
+1. Open the storage account's **Access control (IAM)** page.
+2. Assign one of the following roles to the user account that will sign in during Step 4:
+    - **Storage Blob Data Contributor** to read and write data
+    - **Storage Blob Data Owner** to also change owners, permissions and access control lists
+
+### Step 4: Obtain a refresh token
+
+The connector authenticates with an OAuth 2.0 refresh token from Microsoft Entra ID and renews its access token automatically.
+
+> **Note:** For a walkthrough of the Microsoft Entra ID app registration with screenshots, see [Register an application in Microsoft Entra ID](https://central.ballerina.io/ballerinax/microsoft.teams/latest#step-1-register-an-application-in-microsoft-entra-id) in the Microsoft Teams connector setup guide. Add the Azure Storage permission below instead of the Microsoft Graph permissions it describes.
+
+1. Sign in to the [Microsoft Entra admin center](https://entra.microsoft.com) and go to **Entra ID** > **App registrations** > **New registration**.
+2. Enter a name, choose the supported account types, add `https://jwt.ms` as a **Web** redirect URI, and select **Register**.
+3. On the application's **Overview** page, note the **Application (client) ID** and the **Directory (tenant) ID**.
+4. Go to **Certificates & secrets** > **New client secret**, add a secret, and copy its **Value**. The value is shown only once.
+5. Go to **API permissions** > **Add a permission** > **Azure Storage**, select the delegated **user_impersonation** permission, and select **Add permissions**. Grant admin consent if your tenant requires it.
+6. Open the following URL in a browser, with your tenant ID and client ID, and sign in with the user account that has the role from Step 3:
+
+    ```text
+    https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/authorize?client_id=<client-id>&response_type=code&redirect_uri=https%3A%2F%2Fjwt.ms&response_mode=query&scope=https%3A%2F%2Fstorage.azure.com%2Fuser_impersonation%20offline_access
     ```
 
-    For an unattended service, register an application in Microsoft Entra ID, create a client secret for it, and grant its service principal a role as in step 3. Then request a token with the OAuth 2.0 client credentials flow from `https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token`, using the scope `https://storage.azure.com/.default`.
+7. Accept the consent prompt. The browser opens `https://jwt.ms/?code=<authorization-code>`. Copy the `code` value, which is single-use and expires within minutes.
+8. Exchange the code for a refresh token:
 
-> **Note:** The connector authenticates with a bearer token and does not refresh it. Access tokens expire, typically after about an hour, so a long-running program must obtain a fresh token and create a new client when the token expires.
+    ```bash
+    curl -X POST "https://login.microsoftonline.com/<tenant-id>/oauth2/v2.0/token" \
+      --data-urlencode "client_id=<client-id>" \
+      --data-urlencode "client_secret=<client-secret>" \
+      --data-urlencode "scope=https://storage.azure.com/user_impersonation offline_access" \
+      --data-urlencode "code=<authorization-code>" \
+      --data-urlencode "redirect_uri=https://jwt.ms" \
+      --data-urlencode "grant_type=authorization_code"
+    ```
+
+9. Copy the `refresh_token` value from the JSON response.
 
 ## Quickstart
 
@@ -46,20 +82,34 @@ import ballerinax/azure.datalake;
 
 ### Step 2: Instantiate a new connector
 
-Create a `datalake:Client` with the storage account's Data Lake endpoint and an access token.
+Create a `datalake:Client` with the storage account's Data Lake endpoint and the credentials from Step 4 of the setup guide.
 
 ```ballerina
 configurable string storageAccount = ?;
-configurable string token = ?;
+configurable string tenantId = ?;
+configurable string clientId = ?;
+configurable string clientSecret = ?;
+configurable string refreshToken = ?;
 
-final datalake:Client datalake = check new ({auth: {token}}, string `https://${storageAccount}.dfs.core.windows.net`);
+final datalake:Client datalake = check new ({
+    auth: {
+        clientId,
+        clientSecret,
+        refreshToken,
+        refreshUrl: string `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+        scopes: ["https://storage.azure.com/user_impersonation", "offline_access"]
+    }
+}, string `https://${storageAccount}.dfs.core.windows.net`);
 ```
 
 Provide the values in a `Config.toml` file:
 
 ```toml
 storageAccount = "<storage-account-name>"
-token = "<access-token>"
+tenantId = "<tenant-id>"
+clientId = "<client-id>"
+clientSecret = "<client-secret>"
+refreshToken = "<refresh-token>"
 ```
 
 ### Step 3: Invoke the connector operation
