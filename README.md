@@ -100,6 +100,8 @@ final datalake:Client datalake = check new ({
 }, string `https://${storageAccount}.dfs.core.windows.net`);
 ```
 
+> **Note:** The connector's default token URL is the multi-tenant `https://login.microsoftonline.com/common/oauth2/v2.0/token` endpoint. It works only for applications that accept accounts from any organization, so change it to your tenant's endpoint, as `refreshUrl` does above.
+
 Provide the values in a `Config.toml` file:
 
 ```toml

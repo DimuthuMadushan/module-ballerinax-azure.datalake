@@ -1,6 +1,6 @@
 # Daily extract ingestion
 
-This example lands a local data extract in Azure Data Lake Storage. It creates the target filesystem when it does not exist yet, creates a directory named after the extract date, uploads the file in chunks (append, then flush) to a temporary path, reads it back range by range to confirm that the stored content matches the local file, renames it into place, and lists the directory. A rerun for the same date replaces the earlier extract only after the new upload is verified.
+This example lands a local data extract in Azure Data Lake Storage. It creates the target filesystem when it does not exist yet, creates a directory named after the extract date, uploads the file in chunks (append, then flush) to a temporary path, reads it back range by range to confirm that the stored content matches the local file, renames it into place, and lists the directory. A rerun for the same date replaces the earlier extract only after the new upload is verified. If the upload or the verification fails, the temporary file is removed.
 
 ## Prerequisites
 
